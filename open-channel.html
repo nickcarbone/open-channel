@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Open Channel</title>
+<meta name="description" content="A receive-only radio for the second monitor: live air traffic control, oceanic, marine, rail, fire and weather radio from around the world.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect x=%277%27 y=%278%27 width=%2718%27 height=%2722%27 rx=%274%27 fill=%27%2326292d%27/%3E%3Crect x=%2710%27 y=%2711%27 width=%2712%27 height=%277%27 rx=%271%27 fill=%27%23ff8a1e%27/%3E%3Crect x=%279%27 y=%271%27 width=%273%27 height=%278%27 rx=%271.5%27 fill=%27%23111%27/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --room:#101113; --room2:#17191c;
+  --shell:#26292d; --shell-hi:#34383d; --shell-lo:#16181a; --rubber:#0c0d0e;
+  --lcd:#ff8a1e; --lcd-hi:#ffb257; --lcd-lo:#e46b08;
+  --ink:#2a1200; --ghost:rgba(42,18,0,.10);
+  --label:#8f969d; --text:#cfd4d9; --dim:#7d848b; --line:#25282c;
+  --accent:#ff7a12; --live:#5fdc6a; --off:#d4543f; --warn:#f0b43c;
+  --mono:"Share Tech Mono",ui-monospace,Menlo,Consolas,monospace;
+  --tech:"Chakra Petch",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(1200px 800px at 30% 20%,#1b1d21 0,var(--room) 60%) fixed;color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+a{color:var(--accent)}
+.stage{display:grid;grid-template-columns:minmax(360px,520px) minmax(340px,1fr);gap:48px;max-width:1320px;margin:0 auto;padding:36px 32px 28px;align-items:start}
+@media (max-width:980px){.stage{grid-template-columns:1fr;gap:28px;padding:24px 16px}}
+.stage>*{min-width:0}
+@media (max-width:540px){
+  .shell{padding:20px 16px 24px;border-radius:30px 30px 40px 40px}
+  .brand span{display:none}
+  .keys{gap:8px}.keys.bandkeys{gap:4px}
+  .bandkeys .key{font-size:9.5px;letter-spacing:.02em;padding:0}
+  .key{font-size:11px;letter-spacing:.08em}
+  .lcd{padding:10px 12px}.ident{font-size:17px}.meta{font-size:11px}
+  .topdeck{right:6%;gap:18px}.knob{width:50px;height:50px}
+  .hint{display:none}
+  .row{grid-template-columns:26px 1fr auto 40px 12px;gap:8px}
+}
+
+/* ---------- the radio ---------- */
+.radio{position:relative;margin-top:118px;user-select:none;-webkit-user-select:none}
+.antenna{position:absolute;left:19%;top:-118px;width:30px;height:132px;border-radius:15px 15px 6px 6px;
+  background:repeating-linear-gradient(180deg,#1a1c1e 0 6px,#111214 6px 9px);box-shadow:inset 3px 0 4px rgba(255,255,255,.06),inset -4px 0 6px rgba(0,0,0,.6),0 10px 20px rgba(0,0,0,.5)}
+.antenna::after{content:"";position:absolute;left:5px;right:5px;bottom:-8px;height:16px;border-radius:4px;background:#0a0b0c}
+.topdeck{position:absolute;right:11%;top:-62px;display:flex;align-items:flex-end;gap:26px}
+.knobwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.knob{width:58px;height:58px;border-radius:50%;cursor:grab;touch-action:none;position:relative;
+  background:repeating-conic-gradient(#2c2f33 0 6deg,#1b1d20 6deg 12deg);box-shadow:0 8px 14px rgba(0,0,0,.6),inset 0 0 0 5px #222528,inset 0 2px 2px rgba(255,255,255,.12)}
+.knob::before{content:"";position:absolute;inset:11px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#3b3f44,#1d1f22 70%);box-shadow:inset 0 1px 1px rgba(255,255,255,.12)}
+.knob i{position:absolute;left:50%;top:9px;width:4px;height:14px;margin-left:-2px;border-radius:2px;background:var(--accent);transform-origin:2px 20px;box-shadow:0 0 6px rgba(255,122,18,.5)}
+.knob:active{cursor:grabbing}
+.knob:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.knoblabel{font:600 10px/1 var(--tech);letter-spacing:.22em;color:var(--label)}
+.led{width:12px;height:12px;border-radius:50%;margin-bottom:24px;background:#1f2a20;box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 0 0 3px #141516}
+.led.rx{background:var(--live);box-shadow:0 0 10px var(--live),0 0 0 3px #141516}
+.led.buf{background:var(--warn);box-shadow:0 0 8px var(--warn),0 0 0 3px #141516;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+
+.shell{position:relative;border-radius:36px 36px 48px 48px;padding:26px 30px 32px;
+  background:linear-gradient(180deg,var(--shell-hi) 0,var(--shell) 18%,#202326 70%,var(--shell-lo));
+  border:1px solid #0a0b0c;box-shadow:inset 0 2px 0 rgba(255,255,255,.07),inset 0 -8px 18px rgba(0,0,0,.55),0 40px 80px rgba(0,0,0,.6),0 6px 14px rgba(0,0,0,.4)}
+.shell::before,.shell::after{content:"";position:absolute;top:120px;bottom:120px;width:12px;border-radius:6px;background:repeating-linear-gradient(180deg,#111214 0 5px,#1c1e21 5px 9px)}
+.shell::before{left:-7px}.shell::after{right:-7px}
+.brand{display:flex;justify-content:space-between;align-items:center;margin:0 4px 14px;font:700 13px/1 var(--tech);letter-spacing:.32em;color:#a3a9b0}
+.brand b{color:var(--accent);font-weight:700}
+.brand span{font:600 10px/1 var(--tech);letter-spacing:.2em;color:var(--dim)}
+
+.bezel{background:#0b0c0d;border-radius:18px;padding:10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.9),0 1px 0 rgba(255,255,255,.06)}
+.lcd{position:relative;border-radius:10px;padding:12px 16px 12px;color:var(--ink);font-family:var(--mono);text-transform:uppercase;overflow:hidden;
+  background:radial-gradient(ellipse 90% 80% at 38% 28%,var(--lcd-hi),var(--lcd) 55%,var(--lcd-lo));
+  box-shadow:inset 0 0 0 2px rgba(60,25,0,.55),inset 0 8px 20px rgba(110,40,0,.35);transition:filter .4s, background .4s}
+.lcd::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(118deg,rgba(255,255,255,.22),rgba(255,255,255,0) 38%),repeating-linear-gradient(0deg,rgba(0,0,0,.025) 0 1px,transparent 1px 3px)}
+.lcd.off{background:radial-gradient(ellipse 90% 80% at 38% 28%,#6b5a47,#55463a 60%,#4a3d33);box-shadow:inset 0 0 0 2px rgba(0,0,0,.4),inset 0 8px 20px rgba(0,0,0,.35)}
+.lcd.off .lit,.lcd.off .seg.on{opacity:.08!important}
+.lcd.off canvas{opacity:.1}
+.icons{display:flex;gap:9px;align-items:center;font-size:12px;letter-spacing:.06em;height:16px}
+.icons .t{opacity:.11;transition:opacity .15s}
+.icons .t.lit{opacity:1}
+.icons .band{border:1.5px solid var(--ink);padding:0 4px;border-radius:3px;line-height:13px}
+.bars{margin-left:auto;display:flex;gap:2px;align-items:flex-end;height:14px}
+.bars i{width:5px;background:var(--ink);opacity:.11}
+.bars i.lit{opacity:1}
+.main{display:flex;align-items:flex-end;gap:14px;margin:8px 0 4px}
+.chbox{display:flex;flex-direction:column;align-items:flex-start;font-size:11px;letter-spacing:.1em}
+.seg{fill:var(--ink)}
+.seg.ghost{fill:var(--ghost)}
+#segCh{width:56px;height:44px}
+#segFreq{flex:1;height:64px;min-width:0}
+.unit{font-size:13px;letter-spacing:.08em;padding-bottom:6px;min-width:44px;text-align:right}
+.ident{font-size:21px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.sub{font-size:12.5px;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+#scope{display:block;width:100%;height:58px;margin:6px 0 4px}
+.meta{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;letter-spacing:.04em;white-space:nowrap}
+.meta span{overflow:hidden;text-overflow:ellipsis}
+.msg{font-size:12px;letter-spacing:.06em;height:16px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.grille{height:104px;margin:20px 6px 18px;border-radius:16px;background:radial-gradient(circle,#070809 0 2.6px,transparent 3px) 0 0/11px 11px,#202326;box-shadow:inset 0 3px 8px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.05)}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.keys.bandkeys{grid-template-columns:repeat(7,1fr);gap:7px;margin-bottom:12px}
+.key{position:relative;height:46px;border:0;border-radius:11px;cursor:pointer;font:700 12px/1 var(--tech);letter-spacing:.14em;color:#cdd2d7;
+  background:linear-gradient(180deg,#3b3f44,#26292d);box-shadow:0 4px 0 #111214,0 6px 10px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.1)}
+.bandkeys .key{height:34px;font-size:10.5px;letter-spacing:.08em}
+.key:active{transform:translateY(3px);box-shadow:0 1px 0 #111214,0 2px 4px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
+.key::after{content:"";position:absolute;left:30%;right:30%;top:6px;height:3px;border-radius:2px;background:#1a1c1f}
+.key[aria-pressed="true"]::after{background:var(--accent);box-shadow:0 0 8px rgba(255,122,18,.8)}
+.key.pwr{background:linear-gradient(180deg,#d4642a,#a8441a);color:#fff3ea}
+.key.pwr::after{display:none}
+.key.pwr.idle{animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 4px 0 #111214,0 0 0 5px rgba(255,122,18,.25),0 6px 18px rgba(255,122,18,.35)}}
+.key:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{margin:16px 6px 0;font:600 10px/1.5 var(--tech);letter-spacing:.14em;color:var(--dim);text-align:center}
+
+/* ---------- side panel ---------- */
+.panel{background:linear-gradient(180deg,#181a1d,#141618);border:1px solid var(--line);border-radius:20px;min-height:640px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tab{flex:1;padding:14px 8px;background:none;border:0;cursor:pointer;font:700 11.5px/1 var(--tech);letter-spacing:.2em;color:var(--dim);border-bottom:2px solid transparent}
+.tab[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+.pane{display:none;padding:18px 20px 22px;overflow:auto;max-height:calc(100vh - 120px)}
+.pane.on{display:block}
+.pane h3{font:700 11px/1 var(--tech);letter-spacing:.24em;color:var(--label);margin:20px 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+.pane h3:first-child{margin-top:4px}
+.pane h3 small{font:500 11px/1 var(--mono);letter-spacing:.02em;color:var(--dim)}
+.row{display:grid;grid-template-columns:30px 1fr auto 52px 14px;gap:10px;align-items:center;width:100%;padding:8px 10px;margin:0 -10px;background:none;border:0;border-radius:9px;text-align:left;cursor:pointer}
+.row:hover{background:#1e2124}
+.row.cur{background:#26221d;box-shadow:inset 3px 0 0 var(--accent)}
+.row.pri{box-shadow:inset 3px 0 0 #9aa3ab}
+.row.dim{opacity:.38}
+.row .n{font:13px var(--mono);color:var(--dim)}
+.row .nm{min-width:0}
+.row .nm b{display:block;font:600 13.5px/1.2 var(--tech);letter-spacing:.06em;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm span{display:block;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .lt{font:13px var(--mono);color:var(--label)}
+.busy{display:flex;gap:2px;justify-content:flex-end}
+.busy i{width:6px;height:10px;border-radius:1px;background:#2b2f33}
+.busy i.on{background:#b9804a}
+.dot{width:9px;height:9px;border-radius:50%;border:1.5px solid #4b5056}
+.dot.live{background:var(--live);border-color:var(--live)}
+.dot.off{background:var(--off);border-color:var(--off)}
+.dot.buf{background:var(--warn);border-color:var(--warn)}
+.legend{font-size:12px;color:var(--dim);margin:4px 0 6px;display:flex;flex-wrap:wrap;gap:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+table{width:100%;border-collapse:collapse;font:13px var(--mono)}
+th{font:700 10.5px/1 var(--tech);letter-spacing:.18em;color:var(--label);text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+td{padding:6px;border-bottom:1px solid #1d2023;color:var(--text);vertical-align:top}
+td.d{color:var(--dim)}
+.tools{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.btn{background:#22252a;border:1px solid #2d3136;border-radius:8px;padding:7px 12px;cursor:pointer;font:600 11px/1 var(--tech);letter-spacing:.14em;color:var(--text)}
+.btn:hover{border-color:#43484e}
+input[type=search]{flex:1;background:#101214;border:1px solid #2d3136;border-radius:8px;padding:9px 12px;color:var(--text);font:14px var(--mono)}
+.prose p,.prose li{color:#b9bfc5;font-size:14px}
+.prose ul{padding-left:18px}
+.prose code{font-family:var(--mono);color:var(--text)}
+.kbd{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px}
+.kbd kbd{font:12px var(--mono);background:#22252a;border:1px solid #33373c;border-radius:5px;padding:2px 7px;color:var(--text);justify-self:start}
+.empty{color:var(--dim);font-size:14px;padding:16px 0}
+footer{max-width:1320px;margin:0 auto;padding:0 32px 30px;color:var(--dim);font-size:12.5px}
+footer a{color:var(--label)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- ===== RADIO ===== -->
+  <div class="radio" id="radio">
+    <div class="antenna" aria-hidden="true"></div>
+    <div class="topdeck">
+      <div class="knobwrap"><div class="knob" id="volKnob" tabindex="0" role="slider" aria-label="Volume" aria-valuemin="0" aria-valuemax="100"><i></i></div><div class="knoblabel">VOL</div></div>
+      <div class="led" id="led" title="RX indicator: lights when a transmission is detected"></div>
+      <div class="knobwrap"><div class="knob" id="chKnob" tabindex="0" role="slider" aria-label="Channel"><i></i></div><div class="knoblabel">CH</div></div>
+    </div>
+    <div class="shell">
+      <div class="brand"><div>OPEN <b>CHANNEL</b></div><span>OC-1 · RECEIVE ONLY</span></div>
+      <div class="bezel">
+        <div class="lcd off" id="lcd" aria-live="polite">
+          <div class="icons">
+            <span class="t band lit" id="iBand">ALL</span>
+            <span class="t" id="iScan">SCAN</span>
+            <span class="t" id="iDW">DW</span>
+            <span class="t" id="iFlt">FLT</span>
+            <span class="t" id="iAF" title="AF: the audio can be analysed in this browser">AF</span>
+            <span class="t" id="iMute">MUTE</span>
+            <div class="bars" id="bars" aria-hidden="true"></div>
+          </div>
+          <div class="main">
+            <div class="chbox"><span class="lit">CH</span><svg id="segCh" viewBox="0 0 56 44"></svg></div>
+            <svg id="segFreq" viewBox="0 0 178 64" preserveAspectRatio="xMinYMid meet"></svg>
+            <div class="unit lit" id="unit">MHZ</div>
+          </div>
+          <div class="ident lit" id="ident">OPEN CHANNEL</div>
+          <div class="sub lit" id="sub">PRESS PWR TO RECEIVE</div>
+          <canvas id="scope" aria-hidden="true"></canvas>
+          <div class="meta lit"><span id="lcl">LCL --:--</span><span id="utc">UTC --:--</span><span id="wx">WX --</span></div>
+          <div class="msg lit" id="msg"></div>
+        </div>
+      </div>
+      <div class="grille" aria-hidden="true"></div>
+      <div class="keys bandkeys" id="bandkeys">
+        <button class="key" data-band="ALL">ALL</button>
+        <button class="key" data-band="AIR">AIR</button>
+        <button class="key" data-band="OCN">OCN</button>
+        <button class="key" data-band="SEA">SEA</button>
+        <button class="key" data-band="RAIL">RAIL</button>
+        <button class="key" data-band="PUB">PUB</button>
+        <button class="key" data-band="WX">WX</button>
+      </div>
+      <div class="keys">
+        <button class="key" id="kPrev" aria-label="Previous channel">◀ CH</button>
+        <button class="key" id="kScan" aria-pressed="false">SCAN</button>
+        <button class="key" id="kDW" aria-pressed="false" title="Dual watch: keep this channel as priority while the main receiver moves on">DW</button>
+        <button class="key" id="kNext" aria-label="Next channel">CH ▶</button>
+        <button class="key" id="kFlt" aria-pressed="false" title="Narrowband radio filter, 300 Hz to 3 kHz">FLT</button>
+        <button class="key" id="kTail" aria-pressed="true" title="Squelch tail noise when changing channel">TAIL</button>
+        <button class="key" id="kMute" aria-pressed="false">MUTE</button>
+        <button class="key pwr idle" id="kPwr">PWR</button>
+      </div>
+      <div class="hint">← → CHANNEL · S SCAN · D DUAL WATCH · M MUTE · 1–7 BANDS</div>
+    </div>
+  </div>
+
+  <!-- ===== PANEL ===== -->
+  <div class="panel">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="true" data-pane="pChannels">CHANNELS</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="pLog">LOG</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="pDecode">DECODER</button>
+      <button class="tab" role="tab" aria-selected="false" data-pane="pNotes">NOTES</button>
+    </div>
+    <div class="pane on" id="pChannels">
+      <div class="legend">
+        <span><i class="dot live"></i>receiving</span><span><i class="dot off"></i>off air</span><span><i class="dot"></i>not yet tried</span>
+        <span><span class="busy"><i class="on"></i><i class="on"></i><i></i></span>usual busyness now</span>
+      </div>
+      <div id="chanList"></div>
+    </div>
+    <div class="pane" id="pLog">
+      <div class="tools"><button class="btn" id="logCopy">COPY</button><button class="btn" id="logClear">CLEAR</button><span class="legend" id="logCount" style="margin:0 0 0 auto"></span></div>
+      <table><thead><tr><th>UTC</th><th>Local</th><th>Channel</th><th>Length</th></tr></thead><tbody id="logBody"></tbody></table>
+      <div class="empty" id="logEmpty">Transmissions appear here as they're detected. Detection works on channels marked AF, which covers air traffic and weather radio.</div>
+    </div>
+    <div class="pane" id="pDecode">
+      <div class="tools"><input type="search" id="decQ" placeholder="Search a callsign, airline or term…" aria-label="Search decoder"></div>
+      <h3>Airline callsigns</h3>
+      <table><thead><tr><th>Say</th><th>Airline</th><th>ICAO</th></tr></thead><tbody id="decAir"></tbody></table>
+      <h3>Radio phrases</h3>
+      <table><tbody id="decTerms"></tbody></table>
+    </div>
+    <div class="pane prose" id="pNotes">
+      <h3>What's on the display</h3>
+      <p>Everything on the display is real or left blank. The frequency is the published one for that feed. Scanner feeds that cover several channels show dashes and <code>MULTI</code>. The level bars and waveform come from the live audio. The weather is current conditions at the station from Open-Meteo. The green light on top comes on when a transmission is detected.</p>
+      <p>The <code>AF</code> flag means this browser is allowed to analyse the stream. LiveATC and the weather-radio servers allow it. Broadcastify usually doesn't, so those channels play normally but without level bars, waveform, transmission log or the narrowband filter.</p>
+      <h3>How scan works</h3>
+      <p>Scan picks the channel that is usually busiest at this moment, from its local time. Airports peak in morning and evening banks. Dispatch peaks in the evening. Rail follows commuter hours. Gander follows the North Atlantic track system: westbound flow is roughly midday to evening UTC, eastbound overnight. These are typical daily patterns, not live traffic counts.</p>
+      <p>Once on a channel, scan stays for at least two minutes. It moves on after 75 seconds of silence, and after twelve minutes regardless. Channels you've heard talking recently score higher. Weather radio is left out of the ALL scan because it never goes quiet. Pick WX to scan it.</p>
+      <h3>Dual watch</h3>
+      <p>Press DW to keep the current channel as a quieter priority channel while the main receiver moves on. When the priority channel talks, the main channel dips so you can hear it.</p>
+      <h3>Keys</h3>
+      <div class="kbd">
+        <kbd>← →</kbd><span>Previous / next channel (stops scan)</span>
+        <kbd>S</kbd><span>Scan on / off</span>
+        <kbd>D</kbd><span>Dual watch</span>
+        <kbd>F</kbd><span>Narrowband filter</span>
+        <kbd>T</kbd><span>Squelch tail on channel change</span>
+        <kbd>M</kbd><span>Mute</span>
+        <kbd>+ −</kbd><span>Volume (or scroll / drag the VOL knob)</span>
+        <kbd>1–7</kbd><span>Bands: ALL, AIR, OCN, SEA, RAIL, PUB, WX</span>
+        <kbd>P</kbd><span>Power</span>
+      </div>
+      <h3>Feed status <small id="statusStamp">no checker file found</small></h3>
+      <p>Volunteer feeds go off air without notice. If <code>open-channel-status.json</code> sits next to this page (written by the included GitHub Action), channels it found off air are marked red and skipped by scan. Otherwise each channel is marked when you tune it.</p>
+      <h3>Sources</h3>
+      <p>Air traffic and oceanic audio: <a href="https://www.liveatc.net" target="_blank" rel="noopener">LiveATC.net</a>. Marine, rail and public-safety audio: <a href="https://www.broadcastify.com" target="_blank" rel="noopener">Broadcastify</a> (free listeners may hear a short ad when a feed starts). Weather radio: <a href="https://wxradio.us" target="_blank" rel="noopener">WXRadio</a> and <a href="https://noaaweatherradio.org" target="_blank" rel="noopener">noaaweatherradio.org</a>. Weather: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>. Every stream plays straight from its provider and nothing is recorded or relayed. Each feed is run by volunteers who own it, and links on the station rows go to their pages.</p>
+      <p>Not for operational use. Audio can be delayed, interrupted or missing.</p>
+    </div>
+  </div>
+</div>
+<footer>Open Channel streams public audio directly from the providers credited under Notes. If you run one of these feeds and want it removed, open an issue on the repository and it will come out.</footer>
+
+<script type="application/json" id="stations">
+[
+["jfk-twr","AIR","JFK TWR","New York JFK Tower","119.100","New York","US",40.6413,-73.7781,"America/New_York","atc","kjfk_twr","airport","KJFK"],
+["jfk-gnd","AIR","JFK GND","New York JFK Ground","121.900","New York","US",40.6413,-73.7781,"America/New_York","atc","kjfk_gnd","airport","KJFK"],
+["jfk-dep","AIR","NY DEP","New York Departure (JFK)","135.900","New York","US",40.6413,-73.7781,"America/New_York","atc","kjfk_dep","airport","KJFK"],
+["ewr-twr","AIR","EWR TWR","Newark Tower","118.300","Newark","US",40.6895,-74.1745,"America/New_York","atc","kewr_twr","airport","KEWR"],
+["dca-twr","AIR","DCA TWR","Washington National Tower",null,"Washington","US",38.8512,-77.0402,"America/New_York","atc","kdca1_twr","airport","KDCA"],
+["atl-twr","AIR","ATL TWR","Atlanta Tower (all runways)","119.100","Atlanta","US",33.6407,-84.4277,"America/New_York","atc","katl_twr","airport","KATL"],
+["mia-twr","AIR","MIA TWR","Miami Tower","118.300","Miami","US",25.7959,-80.2871,"America/New_York","atc","kmia3_twr","airport","KMIA"],
+["ord-twr","AIR","ORD TWR N","Chicago O'Hare Tower North","132.700","Chicago","US",41.9742,-87.9073,"America/Chicago","atc","kord1n2_twr_n","airport","KORD"],
+["dfw-twr","AIR","DFW TWR E","Dallas/Fort Worth Tower East","126.550","Dallas","US",32.8998,-97.0403,"America/Chicago","atc","kdfw1_twr1_e","airport","KDFW"],
+["las-twr","AIR","LAS TWR","Las Vegas Tower",null,"Las Vegas","US",36.084,-115.1537,"America/Los_Angeles","atc","klas4_twr","airport","KLAS"],
+["lax-twr","AIR","LAX TWR","Los Angeles Tower (north and south)","133.900","Los Angeles","US",33.9416,-118.4085,"America/Los_Angeles","atc","klax_twr","airport","KLAX"],
+["lax-gnd","AIR","LAX GND","Los Angeles Ground","121.650","Los Angeles","US",33.9416,-118.4085,"America/Los_Angeles","atc","klax_gnd","airport","KLAX"],
+["sfo-twr","AIR","SFO TWR","San Francisco Tower","120.500","San Francisco","US",37.6213,-122.379,"America/Los_Angeles","atc","ksfo_twr","airport","KSFO"],
+["sfo-gnd","AIR","SFO GND","San Francisco Ground","121.800","San Francisco","US",37.6213,-122.379,"America/Los_Angeles","atc","ksfo_gnd","airport","KSFO"],
+["sea-twr","AIR","SEA TWR E","Seattle-Tacoma Tower East","119.900","Seattle","US",47.4502,-122.3088,"America/Los_Angeles","atc","ksea3_twr_east","airport","KSEA"],
+["hnl-twr","AIR","HNL TWR","Honolulu Tower","118.100","Honolulu","US",21.3245,-157.9251,"Pacific/Honolulu","atc","phnl1_twr","airport","PHNL"],
+["yul-app","AIR","YUL APP","Montréal Approach/Departure","119.100","Montréal","CA",45.4706,-73.7408,"America/Toronto","atc","cyul_app","airport","CYUL"],
+["mex-app","AIR","MEX APP","Mexico City Approach (final)","121.200","Mexico City","MX",19.4361,-99.0719,"America/Mexico_City","atc","mmmx1_app","airport","MMMX"],
+["gua-all","AIR","GUA","Guatemala City La Aurora (all positions)",null,"Guatemala City","GT",14.5833,-90.5275,"America/Guatemala","atc","mggt3_all","airport","MGGT"],
+["sjo-all","AIR","SJO","San José Juan Santamaría (all positions)",null,"San José","CR",9.9939,-84.2088,"America/Costa_Rica","atc","mroc","airport","MROC"],
+["sju-ctr","AIR","SAN JUAN CTR","San Juan Centre / Oceanic",null,"San Juan","PR",18.4394,-66.0018,"America/Puerto_Rico","atc","tjsj4_app_ctr","airport","TJSJ"],
+["bsb-app","AIR","BSB APP","Brasília Approach/Departure",null,"Brasília","BR",-15.8697,-47.9208,"America/Sao_Paulo","atc","sbbr3_app","airport","SBBR"],
+["vcp-twr","AIR","VCP TWR","Campinas Viracopos Tower",null,"Campinas","BR",-23.0074,-47.1345,"America/Sao_Paulo","atc","sbkp3_twr","airport","SBKP"],
+["scl-all","AIR","SCL","Santiago ground, tower and radar",null,"Santiago","CL",-33.393,-70.7858,"America/Santiago","atc","scel","airport","SCEL"],
+["ams-twr","AIR","AMS TWR","Amsterdam Schiphol Tower 18C/36C","118.100","Amsterdam","NL",52.3105,4.7683,"Europe/Amsterdam","atc","eham_twr_18c36c","airport","EHAM"],
+["ams-app","AIR","AMS APP","Schiphol Approach","119.055","Amsterdam","NL",52.3105,4.7683,"Europe/Amsterdam","atc","eham_app_119055","airport","EHAM"],
+["zrh-twr","AIR","ZRH TWR","Zürich Tower","118.100","Zürich","CH",47.4582,8.5555,"Europe/Zurich","atc","lszh1_twr","airport","LSZH"],
+["waw-twr","AIR","WAW TWR","Warsaw Chopin Tower",null,"Warsaw","PL",52.1657,20.9671,"Europe/Warsaw","atc","epwa_twr2","airport","EPWA"],
+["otp-all","AIR","OTP","Bucharest Otopeni approach, tower and area control",null,"Bucharest","RO",44.5711,26.085,"Europe/Bucharest","atc","lrop","airport","LROP"],
+["add-twr","AIR","ADD TWR","Addis Ababa Bole Tower",null,"Addis Ababa","ET",8.9779,38.7993,"Africa/Addis_Ababa","atc","haab2_twr","airport","HAAB"],
+["khi-all","AIR","KHI","Karachi ground, tower and radar","118.300","Karachi","PK",24.9065,67.1608,"Asia/Karachi","atc","opkc","airport","OPKC"],
+["sin-all","AIR","SIN","Singapore Changi delivery, ground, approach and radar","119.800","Singapore","SG",1.3644,103.9915,"Asia/Singapore","atc","wsss3","airport","WSSS"],
+["bwh-twr","AIR","BWH TWR","Butterworth Tower, Penang",null,"Penang","MY",5.4659,100.391,"Asia/Kuala_Lumpur","atc","wmkb","airport","WMKB"],
+["mnl-twr","AIR","MNL TWR","Manila Tower","118.100","Manila","PH",14.5086,121.0198,"Asia/Manila","atc","rpll","airport","RPLL"],
+["hkg-app","AIR","HKG APP","Hong Kong Approach/Departure","119.100","Hong Kong","HK",22.308,113.9185,"Asia/Hong_Kong","atc","vhhh5","airport","VHHH"],
+["khh-all","AIR","KHH","Kaohsiung delivery, ground, tower and approach","118.700","Kaohsiung","TW",22.5771,120.35,"Asia/Taipei","atc","rckh2","airport","RCKH"],
+["hnd-twr","AIR","HND TWR","Tokyo Haneda Tower","118.100","Tokyo","JP",35.5494,139.7798,"Asia/Tokyo","atc","rjtt_twr","airport","RJTT"],
+["hnd-app","AIR","TYO APP","Tokyo Approach","119.100","Tokyo","JP",35.5494,139.7798,"Asia/Tokyo","atc","rjtt_app","airport","RJTT"],
+["nrt-twr","AIR","NRT TWR","Tokyo Narita Tower","118.350","Narita","JP",35.772,140.3929,"Asia/Tokyo","atc","rjaa_twr","airport","RJAA"],
+["syd-twr","AIR","SYD TWR","Sydney Tower","120.500","Sydney","AU",-33.9399,151.1753,"Australia/Sydney","atc","yssy1_twr","airport","YSSY"],
+["mel-all","AIR","MEL","Melbourne tower, approach and centre","120.500","Melbourne","AU",-37.669,144.841,"Australia/Melbourne","atc","ymml3","airport","YMML"],
+["bne-twr","AIR","BNE TWR","Brisbane north and south towers",null,"Brisbane","AU",-27.3842,153.1175,"Australia/Brisbane","atc","ybbn7_twr","airport","YBBN"],
+["gdr-ctr","OCN","GANDER CTR","Gander Centre, North Atlantic entry","133.150","Gander","CA",47.6186,-52.7519,"America/St_Johns","atc","cyyt1_ctr_133150","oceanic","CYYT"],
+["gdr-iar","OCN","GANDER IAR","International Air Radio, air-to-air","122.375","Gander","CA",47.6186,-52.7519,"America/St_Johns","atc","cyyt1_iar_122375","oceanic","CYYT"],
+["hlg-sea","SEA","HARLINGEN","Dutch coast: Coastguard Ch16/67, Harlingen port Ch11, Brandaris traffic Ch02",null,"Harlingen","NL",53.1745,5.4223,"Europe/Amsterdam","bcfy","20564","marine",null],
+["nwi-sea","SEA","NW IRELAND","North West Ireland marine Ch16 and air",null,"Donegal","IE",54.65,-8.11,"Europe/Dublin","bcfy","44085","marine",null],
+["cpn-sea","SEA","CAPE PINE","Cape Pine, Newfoundland: Placentia Bay traffic and Ch16",null,"Cape Pine","CA",46.617,-53.533,"America/St_Johns","bcfy","27928","marine",null],
+["nyc-sea","SEA","NY HARBOR","Northern New Jersey and New York City marine VHF",null,"New York","US",40.69,-74.04,"America/New_York","bcfy","17329","marine",null],
+["mob-sea","SEA","MOBILE BAY","Mobile Bay pilots and port channels",null,"Mobile","US",30.69,-88.04,"America/Chicago","bcfy","22612","marine",null],
+["stl-sea","SEA","MISSISSIPPI","Mississippi River marine, St Louis area",null,"St Louis","US",38.63,-90.19,"America/Chicago","bcfy","33765","marine",null],
+["sfo-sea","SEA","SF OFFSHORE","San Francisco offshore: Ch16 and Coast Guard Ch22A",null,"Half Moon Bay","US",37.5,-122.49,"America/Los_Angeles","bcfy","44206","marine",null],
+["nj-rail","RAIL","NJ PASSENGER","Central NJ passenger rail: NJ Transit and Amtrak Northeast Corridor",null,"South Bound Brook","US",40.553,-74.53,"America/New_York","bcfy","22265","rail",null],
+["njn-rail","RAIL","N JERSEY RR","North Jersey passenger railroads, Union NJ",null,"Union","US",40.7,-74.26,"America/New_York","bcfy","45892","rail",null],
+["phl-rail","RAIL","PHILA RR","Amtrak and NJ Transit around Philadelphia",null,"Philadelphia","US",39.95,-75.17,"America/New_York","bcfy","40934","rail",null],
+["nhv-rail","RAIL","NEW HAVEN RR","New Haven area railroad radio",null,"New Haven","US",41.3,-72.93,"America/New_York","bcfy","37971","rail",null],
+["bos-rail","RAIL","BOSTON RR","Boston Metro-West railroads: Amtrak, MBTA, CSX",null,"Boston","US",42.35,-71.25,"America/New_York","bcfy","44577","rail",null],
+["sch-rail","RAIL","SCHENECTADY","Schenectady County railroads",null,"Schenectady","US",42.81,-73.94,"America/New_York","bcfy","45333","rail",null],
+["ttc","RAIL","TTC CONTROL","Toronto Transit Control",null,"Toronto","CA",43.65,-79.38,"America/Toronto","bcfy","31629","rail",null],
+["fdny-mn","PUB","FDNY MAN","FDNY Manhattan fire dispatch","482.106","New York","US",40.7831,-73.9712,"America/New_York","bcfy","46122","dispatch",null],
+["fdny-ems","PUB","FDNY EMS","FDNY EMS Manhattan Central","482.981","New York","US",40.7831,-73.9712,"America/New_York","bcfy","34682","dispatch",null],
+["tfs-s","PUB","TFS SOUTH","Toronto Fire Services South Zone and automated dispatch",null,"Toronto","CA",43.65,-79.38,"America/Toronto","bcfy","3140","dispatch",null],
+["impd-se","PUB","IMPD SE","Indianapolis Metropolitan Police, Southeast District",null,"Indianapolis","US",39.77,-86.16,"America/Indiana/Indianapolis","bcfy","39919","dispatch",null],
+["lafd-alt","PUB","LAFD ALT","Los Angeles Fire alternate incident dispatch, citywide",null,"Los Angeles","US",34.05,-118.24,"America/Los_Angeles","bcfy","18564","dispatch",null],
+["lafd-s","PUB","LAFD SOUTH","LAFD fire and EMS dispatch, South Division",null,"Los Angeles","US",34.05,-118.24,"America/Los_Angeles","bcfy","18556","dispatch",null],
+["lacofd-1","PUB","LACOFD 1","Los Angeles County Fire Dispatch 1 (official feed)",null,"Los Angeles County","US",34.05,-118.24,"America/Los_Angeles","bcfy","38641","dispatch",null],
+["nsw-hun","PUB","NSW RFS HUN","Hunter, Mid North Coast and Central Coast Rural Fire Service",null,"Newcastle","AU",-32.93,151.78,"Australia/Sydney","bcfy","44286","dispatch",null],
+["nsw-ill","PUB","NSW S COAST","NSW South Coast fire and ambulance (Illawarra)",null,"Wollongong","AU",-34.42,150.89,"Australia/Sydney","bcfy","43599","dispatch",null],
+["nsw-fsc","PUB","NSW FAR SC","NSW Far South Coast fire, flood and storm",null,"Bega","AU",-36.67,149.84,"Australia/Sydney","bcfy","5578","dispatch",null],
+["wx-nyc","WX","NWR KWO35","NOAA Weather Radio KWO35, New York City","162.550","New York","US",40.71,-74.01,"America/New_York","wx","NY-NewYorkCity-KWO35","wx",null],
+["wx-dc","WX","NWR KHB36","NOAA Weather Radio KHB36, Manassas (Washington DC area)","162.550","Manassas","US",38.75,-77.47,"America/New_York","wx","VA-Manassas-KHB36","wx",null],
+["wx-orf","WX","NWR KHB37","NOAA Weather Radio KHB37, Wakefield (Norfolk area)","162.550","Wakefield","US",36.97,-76.99,"America/New_York","wx","VA-Norfolk-KHB37","wx",null],
+["wx-chi","WX","NWR KWO39","NOAA Weather Radio KWO39, Chicago","162.550","Chicago","US",41.88,-87.63,"America/Chicago","wx","IL-Chicago-KWO39","wx",null],
+["wx-mry","WX","NWR KEC49","NOAA Weather Radio KEC49, Monterey Bay","162.550","Monterey","US",37.16,-121.9,"America/Los_Angeles","wx","CA-Monterey-KEC49","wx",null],
+["wx-mrym","WX","NWR WWF64","NOAA Monterey Marine weather, WWF64","162.450","Monterey","US",36.6,-121.89,"America/Los_Angeles","wx","CA-MontereyMarine-WWF64","wx",null],
+["wx-maui","WX","NWR MAUI","NOAA Weather Radio, Maui",null,"Maui","US",20.8,-156.33,"Pacific/Honolulu","wx","HI-Maui-WWG75","wx",null]
+]
+</script>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const BANDS=['ALL','AIR','OCN','SEA','RAIL','PUB','WX'];
+const BAND_NAME={AIR:'Air traffic control',OCN:'Oceanic',SEA:'Marine VHF',RAIL:'Rail & transit',PUB:'Fire, EMS & police',WX:'Weather radio'};
+const ST=JSON.parse($('stations').textContent).map((r,i)=>({id:r[0],band:r[1],ident:r[2],name:r[3],freq:r[4],city:r[5],cc:r[6],lat:r[7],lon:r[8],tz:r[9],src:r[10],key:r[11],profile:r[12],icao:r[13],ch:i+1,status:'unk',cors:r[10]==='bcfy'?'unknown':'yes',tx:[]}));
+const byId=Object.fromEntries(ST.map(s=>[s.id,s]));
+
+const streamUrl=s=>s.src==='atc'?'https://d.liveatc.net/'+s.key:s.src==='wx'?'https://wxradio.org/'+s.key:'https://broadcastify.cdnstream1.com/'+s.key;
+const pageUrl=s=>s.src==='atc'?'https://www.liveatc.net/search/?icao='+s.icao:s.src==='wx'?'https://wxradio.us/':'https://www.broadcastify.com/listen/feed/'+s.key;
+
+/* ---------- persisted settings ---------- */
+const S={vol:.7,muted:false,filter:false,tail:true,scan:true,band:'ALL',cur:null,log:[]};
+try{Object.assign(S,JSON.parse(localStorage.getItem('openchannel:v1')||'{}'));}catch(e){}
+S.log=(S.log||[]).slice(-300);
+const save=()=>{try{localStorage.setItem('openchannel:v1',JSON.stringify(S));}catch(e){}};
+
+/* ---------- time helpers ---------- */
+const fmtCache={};
+function fmt(tz,opts){const k=tz+JSON.stringify(opts);return fmtCache[k]||(fmtCache[k]=new Intl.DateTimeFormat('en-GB',Object.assign({timeZone:tz},opts)));}
+function hm(tz,d=new Date()){return fmt(tz,{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(d);}
+function tzAbbr(tz,d=new Date()){try{const k='us'+tz;const f=fmtCache[k]||(fmtCache[k]=new Intl.DateTimeFormat('en-US',{timeZone:tz,timeZoneName:'short'}));const p=f.formatToParts(d).find(x=>x.type==='timeZoneName');return p?p.value.toUpperCase():'';}catch(e){return '';}}
+function localHour(tz,d=new Date()){const p=fmt(tz,{hour:'numeric',minute:'numeric',hourCycle:'h23'}).formatToParts(d);const h=+p.find(x=>x.type==='hour').value,m=+p.find(x=>x.type==='minute').value;return h+m/60;}
+
+/* ---------- typical busyness by hour (heuristic, see Notes) ---------- */
+const CURVES={
+  airport:[[0,.08],[5,.15],[6,.6],[7,1],[10,.85],[13,.8],[16,.95],[19,1],[21,.7],[23,.3],[24,.08]],
+  dispatch:[[0,.7],[3,.4],[6,.35],[9,.6],[12,.7],[15,.8],[18,.95],[21,1],[24,.7]],
+  rail:[[0,.15],[5,.4],[7,1],[9,.85],[12,.55],[16,.9],[19,.8],[22,.35],[24,.15]],
+  marine:[[0,.25],[6,.6],[9,.9],[15,1],[19,.6],[22,.35],[24,.25]],
+  oceanic:[[0,.9],[1,1],[7,.9],[9,.35],[11,.6],[12.5,1],[18,1],[20,.5],[23,.7],[24,.9]], /* by UTC */
+  wx:[[0,.3],[24,.3]]
+};
+function interp(c,h){for(let i=1;i<c.length;i++){if(h<=c[i][0]){const[a,ya]=c[i-1],[b,yb]=c[i];return ya+(yb-ya)*(h-a)/(b-a);}}return c[c.length-1][1];}
+function busy(s,d=new Date()){const h=s.profile==='oceanic'?d.getUTCHours()+d.getUTCMinutes()/60:localHour(s.tz,d);return interp(CURVES[s.profile]||CURVES.airport,h);}
+function recentTx(s,now=Date.now()){s.tx=s.tx.filter(t=>now-t<1800000);return s.tx.length;}
+
+/* ---------- seven-segment LCD ---------- */
+const SEGMAP={'0':'abcdef','1':'bc','2':'abged','3':'abgcd','4':'fgbc','5':'afgcd','6':'afgedc','7':'abc','8':'abcdefg','9':'abfgcd','-':'g',' ':''};
+function segPolys(W,H,T){const G=.7,x1=T/2+G,x2=W-T/2-G,h=T/2;
+  const hz=y=>[[x1,y],[x1+h,y-h],[x2-h,y-h],[x2,y],[x2-h,y+h],[x1+h,y+h]];
+  const vt=(x,y1,y2)=>[[x,y1],[x+h,y1+h],[x+h,y2-h],[x,y2],[x-h,y2-h],[x-h,y1+h]];
+  return{a:hz(h),g:hz(H/2),d:hz(H-h),b:vt(W-h,h+G,H/2-G),c:vt(W-h,H/2+G,H-h-G),f:vt(h,h+G,H/2-G),e:vt(h,H/2+G,H-h-G)};}
+function drawSeg(svg,chars,{W,H,T,gap,dpAfter=-1,x0=0,y0=0}){
+  const P=segPolys(W,H,T);let out='';
+  chars.split('').forEach((ch,i)=>{const ox=x0+i*(W+gap)+(dpAfter>=0&&i>dpAfter?gap*.9:0);const on=SEGMAP[ch]??'';
+    for(const k of 'abcdefg'){const pts=P[k].map(([x,y])=>(x+ox+(H-y)*.08).toFixed(2)+','+(y+y0).toFixed(2)).join(' ');out+=`<polygon class="seg ${on.includes(k)?'on':'ghost'}" points="${pts}"/>`;}
+    if(i===dpAfter){const cx=ox+W+gap*.95,cy=y0+H-T/2;out+=`<circle class="seg on" cx="${cx}" cy="${cy}" r="${T*.62}"/>`;}
+  });svg.innerHTML=out;}
+function showFreq(f){const s=f?normFreq(f):'---.---';drawSeg($('segFreq'),s.replace('.',''),{W:22,H:56,T:4.6,gap:5.2,dpAfter:2,x0:2,y0:4});$('unit').textContent=f?'MHZ':'MULTI';}
+function normFreq(f){let[a,b='']=String(f).split('.');return a.padStart(3,' ')+'.'+(b+'000').slice(0,3);}
+function showCh(n){drawSeg($('segCh'),n==null?'--':String(n).padStart(2,'0'),{W:20,H:38,T:3.8,gap:5,x0:1,y0:3});}
+
+/* ---------- audio engine ---------- */
+let ctx=null,master=null,noiseBuf=null,main=null,pri=null;
+function initAudio(){
+  if(ctx)return;const AC=window.AudioContext||window.webkitAudioContext;ctx=new AC();
+  master=ctx.createGain();master.connect(ctx.destination);
+  noiseBuf=ctx.createBuffer(1,ctx.sampleRate*.4,ctx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  applyVolume();
+}
+function applyVolume(){
+  if(master)master.gain.setTargetAtTime(S.muted?0:S.vol*S.vol,ctx.currentTime,.03);
+  for(const c of [main,pri])if(c&&c.el&&!c.src&&!c.dead)c.el.volume=S.muted?0:Math.min(1,S.vol*S.vol*c.mul);
+  $('iMute').classList.toggle('lit',S.muted);$('kMute').setAttribute('aria-pressed',S.muted);
+  $('volKnob').querySelector('i').style.transform=`rotate(${-135+S.vol*270}deg)`;$('volKnob').setAttribute('aria-valuenow',Math.round(S.vol*100));
+}
+function playTail(){
+  if(!ctx||!S.tail||S.muted)return;const n=ctx.createBufferSource();n.buffer=noiseBuf;
+  const bp=ctx.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1900;bp.Q.value=.8;
+  const g=ctx.createGain();const t=ctx.currentTime;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+.22);
+  n.connect(bp);bp.connect(g);g.connect(master);n.start(t);n.stop(t+.3);
+}
+const corsCache={};
+async function probeCors(url){
+  if(url in corsCache)return corsCache[url];
+  const ac=new AbortController();const to=setTimeout(()=>ac.abort(),6000);
+  let ok=false;try{const r=await fetch(url,{mode:'cors',signal:ac.signal,cache:'no-store'});ok=r.ok;}catch(e){ok=false;}
+  clearTimeout(to);try{ac.abort();}catch(e){}
+  return corsCache[url]=ok;
+}
+/* Two receiver slots (main + dual-watch priority). Each slot owns one CORS element (routed through
+   Web Audio) and one plain element. They are unlocked by the PWR press and reused, so browsers that
+   only allow audio from a user gesture (Safari) keep playing as scan changes channel. */
+function silentWav(){const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer);const w=(o,str)=>{for(let i=0;i<str.length;i++)b[o+i]=str.charCodeAt(i);};
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);b.fill(128,44);
+  let bin='';b.forEach(x=>bin+=String.fromCharCode(x));return 'data:audio/wav;base64,'+btoa(bin);}
+const SILENT=silentWav();
+const slots=[0,1].map(()=>{const c=new Audio();c.crossOrigin='anonymous';c.preload='none';const p=new Audio();p.preload='none';return{cors:c,plain:p,src:null,busy:false};});
+function unlockSlots(){for(const sl of slots)for(const el of [sl.cors,sl.plain]){try{el.src=SILENT;const pr=el.play();if(pr)pr.then(()=>{if(el.src===SILENT)el.pause();}).catch(()=>{});}catch(e){}}}
+class Chain{
+  constructor(st,role){this.st=st;this.role=role;this.mul=role==='pri'?.45:1;this.active=false;this.lastActive=0;this.floor=-70;this.over=0;this.under=0;this.openAt=0;this.dead=false;this.failed=false;this.startedAt=Date.now();
+    this.slot=slots.find(s=>!s.busy)||slots[0];this.slot.busy=true;}
+  async start(){
+    const st=this.st,url=streamUrl(st);
+    if(st.cors==='unknown'){setMsg('CHECKING FEED…');st.cors=(await probeCors(url))?'yes':'no';if(!this.dead&&this.role==='main')setMsg('TUNING…');}
+    if(this.dead)return;
+    const useCors=st.cors==='yes';const el=useCors?this.slot.cors:this.slot.plain;this.el=el;
+    this.ev=new AbortController();const sig={signal:this.ev.signal};
+    if(useCors){
+      if(!this.slot.src)this.slot.src=ctx.createMediaElementSource(this.slot.cors);
+      this.src=this.slot.src;try{this.src.disconnect();}catch(e){}
+      this.an=ctx.createAnalyser();this.an.fftSize=2048;this.buf=new Float32Array(this.an.fftSize);
+      this.hp=ctx.createBiquadFilter();this.hp.type='highpass';this.hp.frequency.value=300;this.hp.Q.value=.7;
+      this.lp=ctx.createBiquadFilter();this.lp.type='lowpass';this.lp.frequency.value=3000;this.lp.Q.value=.9;
+      this.g=ctx.createGain();this.g.gain.value=this.mul;this.duck=ctx.createGain();
+      this.src.connect(this.an);this.hp.connect(this.lp);this.lp.connect(this.g);this.g.connect(this.duck);this.duck.connect(master);
+      this.route();
+    }
+    el.addEventListener('playing',()=>{if(!this.dead){setStatus(st,'live');if(this.role==='main')setMsg(S.scan?'SCAN · BUSIEST BY LOCAL HOUR':'');}},sig);
+    el.addEventListener('waiting',()=>{if(!this.dead&&st.status!=='off')setStatus(st,'buf');},sig);
+    el.addEventListener('error',()=>this.fail(),sig);
+    el.src=url;if(!useCors)applyVolume();
+    try{await el.play();}catch(e){if(!this.dead)this.fail();}
+  }
+  route(){if(!this.src||this.dead)return;try{this.src.disconnect(this.hp);}catch(e){}try{this.src.disconnect(this.g);}catch(e){}this.src.connect(S.filter?this.hp:this.g);}
+  setMul(m){this.mul=m;if(this.g)this.g.gain.setTargetAtTime(m,ctx.currentTime,.05);else applyVolume();}
+  fail(){if(this.dead||this.failed)return;this.failed=true;setStatus(this.st,'off');onFail(this);}
+  level(){if(!this.an)return null;this.an.getFloatTimeDomainData(this.buf);let s=0;for(let i=0;i<this.buf.length;i++)s+=this.buf[i]*this.buf[i];const r=Math.sqrt(s/this.buf.length);return r>0?20*Math.log10(r):-120;}
+  stop(){if(this.dead)return;this.dead=true;if(this.st.status==='buf'){this.st.status='unk';renderListSoon();}if(this.active)this.closeTx(Date.now());if(this.ev)this.ev.abort();
+    if(this.el){try{this.el.pause();this.el.removeAttribute('src');this.el.load();}catch(e){}}
+    if(this.src)try{this.src.disconnect();}catch(e){}
+    for(const n of [this.an,this.hp,this.lp,this.g,this.duck])if(n)try{n.disconnect();}catch(e){}
+    this.slot.busy=false;}
+  closeTx(now){this.active=false;const dur=(now-this.openAt-1500)/1000;if(dur>=.5)logTx(this.st,this.openAt,dur);}
+}
+/* transmission detection: adaptive noise floor + hysteresis */
+function detect(c,now){
+  const db=c.level();if(db==null)return null;
+  if(db<c.floor)c.floor=c.floor*.7+db*.3;else c.floor+=.01;
+  c.floor=Math.max(c.floor,-100);
+  const thr=Math.max(c.floor+12,-58);
+  if(db>thr){c.over++;c.under=0;}else{c.under++;c.over=0;}
+  if(!c.active&&c.over>=2){c.active=true;c.openAt=now;}
+  if(c.active){if(db>thr)c.lastActive=now;if(c.under>=30)c.closeTx(now);}
+  return db;
+}
+
+/* ---------- tuning, scan, dual watch ---------- */
+const history=[];
+function inBand(s,band=S.band){return band==='ALL'?s.band!=='WX':s.band===band;}
+function pickNext(exclude=[]){
+  const now=Date.now();let cands=ST.filter(s=>inBand(s)&&s.status!=='off'&&!exclude.includes(s.id)&&!(pri&&pri.st===s)&&!(main&&main.st===s));
+  if(!cands.length)cands=ST.filter(s=>inBand(s)&&!(main&&main.st===s));
+  const recent=history.slice(-Math.min(6,Math.max(0,cands.length-2)));
+  const pool=cands.filter(s=>!recent.includes(s.id));const list=pool.length?pool:cands;
+  let best=null,bs=-1;for(const s of list){const sc=busy(s)*(1+Math.min(recentTx(s,now),20)/20)*(.85+Math.random()*.3);if(sc>bs){bs=sc;best=s;}}
+  return best;
+}
+function tune(st,why){
+  if(!st||!S.power)return;
+  if(main)main.stop();
+  playTail();
+  main=new Chain(st,'main');S.cur=st.id;save();
+  history.push(st.id);if(history.length>40)history.shift();
+  setMsg(why==='scan'?'SCAN · '+st.ident:'TUNING…');
+  renderStation();renderList();fetchWx(st);
+  main.start();
+}
+function onFail(c){
+  if(c===main){setMsg('NO SIGNAL · FEED OFF AIR');if(S.scan)setTimeout(()=>{if(main===c)tune(pickNext([c.st.id]),'scan');},2500);}
+  if(c===pri){setMsg('PRIORITY CHANNEL OFF AIR');}
+  renderList();
+}
+function setStatus(s,v){if(s.status===v)return;s.status=v;renderListSoon();}
+function scanTick(now){
+  if(!S.power||!S.scan||!main)return;
+  const dwell=now-main.startedAt,quiet=now-(main.lastActive||main.startedAt);
+  let go=false;
+  if(main.failed)go=false;
+  else if(main.st.status==='buf'&&dwell>20000&&!main.lastActive)go=true;
+  else if(main.an){if((dwell>120000&&quiet>75000)||(dwell>720000&&quiet>4000))go=true;}
+  else if(dwell>360000)go=true;
+  if(go)tune(pickNext(),'scan');
+}
+function setScan(on){S.scan=on;save();$('kScan').setAttribute('aria-pressed',on);$('iScan').classList.toggle('lit',on);if(S.power)setMsg(on?'SCAN · BUSIEST BY LOCAL HOUR':'SCAN HOLD');if(on&&S.power&&main&&!inBand(main.st))tune(pickNext(),'scan');}
+function toggleDW(){
+  if(!S.power)return;
+  if(pri){pri.stop();pri=null;if(main&&main.duck)main.duck.gain.value=1;setMsg('DUAL WATCH OFF');}
+  else if(main){pri=main;pri.role='pri';pri.setMul(.45);main=null;const nx=pickNext([pri.st.id]);setMsg('DUAL WATCH · PRI '+pri.st.ident);tune(nx,'scan');}
+  $('kDW').setAttribute('aria-pressed',!!pri);$('iDW').classList.toggle('lit',!!pri);renderStation();renderList();
+}
+function step(dir){
+  if(!S.power)return;const list=ST.filter(s=>S.band==='ALL'||s.band===S.band);if(!list.length)return;
+  const i=main?list.indexOf(main.st):-1;const nx=list[(i+dir+list.length)%list.length];
+  if(S.scan)setScan(false);tune(nx,'manual');
+  const k=$('chKnob').querySelector('i');k.dataset.r=(+(k.dataset.r||0)+dir*24);k.style.transform=`rotate(${k.dataset.r}deg)`;
+}
+function setBand(b){
+  S.band=b;save();$('iBand').textContent=b;
+  document.querySelectorAll('#bandkeys .key').forEach(k=>k.setAttribute('aria-pressed',k.dataset.band===b));
+  renderList();
+  if(S.power&&main&&!(b==='ALL'||main.st.band===b))tune(pickNext(),'scan');
+}
+function power(){
+  if(S.power){S.power=false;for(const c of [main,pri])if(c)c.stop();main=pri=null;
+    $('lcd').classList.add('off');$('led').className='led';setMsg('');$('sub').textContent='PRESS PWR TO RECEIVE';$('ident').textContent='OPEN CHANNEL';showFreq('888.888');
+    $('kDW').setAttribute('aria-pressed',false);$('iDW').classList.remove('lit');$('kPwr').classList.add('idle');if(ctx)ctx.suspend();renderList();return;}
+  initAudio();ctx.resume();unlockSlots();S.power=true;$('kPwr').classList.remove('idle');$('lcd').classList.remove('off');
+  showFreq('888.888');showCh(88);$('ident').textContent='OPEN CHANNEL OC-1';$('sub').textContent='SELF TEST';
+  setTimeout(()=>{if(!S.power)return;const last=S.cur&&byId[S.cur];tune(S.scan||!last?pickNext():last,S.scan?'scan':'manual');},450);
+}
+
+/* ---------- logging ---------- */
+function logTx(st,t,dur){st.tx.push(t);S.log.push({t,id:st.id,d:Math.round(dur*10)/10});if(S.log.length>300)S.log.shift();save();renderLog();}
+function renderLog(){
+  const rows=S.log.slice().reverse();$('logEmpty').style.display=rows.length?'none':'block';
+  $('logCount').textContent=rows.length?rows.length+' transmissions':'';
+  $('logBody').innerHTML=rows.slice(0,200).map(r=>{const s=byId[r.id];if(!s)return'';const d=new Date(r.t);
+    return `<tr><td>${d.toISOString().slice(11,19)}</td><td class="d">${hm(s.tz,d)}</td><td>${String(s.ch).padStart(2,'0')} ${s.ident}</td><td class="d">${r.d.toFixed(1)}s</td></tr>`;}).join('');
+}
+$('logCopy').onclick=()=>{const txt=S.log.map(r=>{const s=byId[r.id];return s?`${new Date(r.t).toISOString()}\t${s.ident}\t${s.name}\t${r.d}s`:'';}).join('\n');navigator.clipboard&&navigator.clipboard.writeText(txt);};
+$('logClear').onclick=()=>{S.log=[];ST.forEach(s=>s.tx=[]);save();renderLog();};
+
+/* ---------- weather (Open-Meteo, CORS-enabled) ---------- */
+const wxCache={};
+const WMO=c=>c===0?'CLEAR':c<=2?'PART CLOUD':c===3?'OVERCAST':c<=48?'FOG':c<=57?'DRIZZLE':c<=67?'RAIN':c<=77?'SNOW':c<=82?'SHOWERS':c<=86?'SNOW SHWR':'THUNDER';
+async function fetchWx(st){
+  const k=st.lat.toFixed(1)+','+st.lon.toFixed(1);const c=wxCache[k];
+  if(c&&Date.now()-c.t<900000){paintWx(st,c.v);return;}
+  $('wx').textContent='WX …';
+  try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${st.lat}&longitude=${st.lon}&current=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code&wind_speed_unit=kn`);
+    const j=await r.json();const cu=j.current;if(!cu)throw 0;
+    const v={tc:cu.temperature_2m,ws:cu.wind_speed_10m,wd:cu.wind_direction_10m,wc:cu.weather_code};wxCache[k]={t:Date.now(),v};paintWx(st,v);
+  }catch(e){if(main&&main.st===st)$('wx').textContent='WX N/A';}
+}
+function paintWx(st,v){if(!main||main.st!==st)return;const f=Math.round(v.tc*9/5+32);
+  $('wx').textContent=`${Math.round(v.tc)}°C/${f}°F ${String(Math.round(v.wd/10)*10||360).padStart(3,'0')}/${Math.round(v.ws)}KT ${WMO(v.wc)}`;}
+
+/* ---------- rendering ---------- */
+function setMsg(t){$('msg').textContent=t||'';}
+function renderStation(){
+  if(!main){return;}const s=main.st;
+  showCh(s.ch);showFreq(s.freq);
+  $('ident').textContent=`${s.ident} · ${s.city.toUpperCase()} ${s.cc}`;
+  $('sub').textContent=pri?`PRI ▸ ${pri.st.ident}  ·  ${s.name}`:s.name;
+  tickClock();
+}
+function tickClock(){
+  const d=new Date();$('utc').textContent='UTC '+d.toISOString().slice(11,16);
+  if(main){const s=main.st;$('lcl').textContent=`LCL ${hm(s.tz,d)} ${tzAbbr(s.tz,d)}`;}
+}
+let listTimer=null;function renderListSoon(){clearTimeout(listTimer);listTimer=setTimeout(renderList,120);}
+function renderList(){
+  const d=new Date();let html='';
+  for(const b of BANDS.slice(1)){
+    const items=ST.filter(s=>s.band===b);
+    html+=`<h3>${BAND_NAME[b]}<small>${items.length} ch</small></h3>`;
+    for(const s of items){
+      const lv=Math.round(busy(s,d)*5);const cls=[main&&main.st===s?'cur':'',pri&&pri.st===s?'pri':'',(S.band!=='ALL'&&S.band!==s.band)?'dim':''].join(' ');
+      const tx=recentTx(s);
+      html+=`<div class="row ${cls}" role="button" tabindex="0" data-id="${s.id}" title="${s.name} — ${s.src==='atc'?'LiveATC':s.src==='wx'?'WXRadio':'Broadcastify'} feed">
+        <span class="n">${String(s.ch).padStart(2,'0')}</span>
+        <span class="nm"><b>${s.ident}</b><span>${s.city}, ${s.cc}${s.freq?' · '+s.freq:''}${tx?' · '+tx+' tx/30m':''} · <a href="${pageUrl(s)}" target="_blank" rel="noopener">source</a></span></span>
+        <span class="lt">${hm(s.tz,d)}</span>
+        <span class="busy" aria-label="usual busyness ${lv} of 5">${'<i class="on"></i>'.repeat(lv)}${'<i></i>'.repeat(5-lv)}</span>
+        <i class="dot ${s.status==='unk'?'':s.status}" aria-label="${s.status}"></i></div>`;
+    }
+  }
+  $('chanList').innerHTML=html;
+  if(main&&main.st.id!==lastScrolled){lastScrolled=main.st.id;const r=$('chanList').querySelector('.row.cur');if(r){const pane=$('pChannels');const top=r.offsetTop-pane.offsetTop;if(top<pane.scrollTop||top>pane.scrollTop+pane.clientHeight-60)pane.scrollTop=top-pane.clientHeight/3;}}
+}
+let lastScrolled=null;
+$('chanList').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('row')){e.preventDefault();e.stopPropagation();e.target.click();}});
+$('chanList').addEventListener('click',e=>{if(e.target.closest('a'))return;const r=e.target.closest('.row');if(!r)return;const s=byId[r.dataset.id];
+  if(!S.power){S.cur=s.id;S.scan=false;save();setScan(false);power();return;}
+  if(pri&&pri.st===s)return;if(S.scan)setScan(false);tune(s,'manual');});
+
+/* bars + scope + LED + detection loop */
+const bars=$('bars');bars.innerHTML=[4,6,8,10,12,14].map(h=>`<i style="height:${h}px"></i>`).join('');
+const scope=$('scope'),sctx=scope.getContext('2d');
+function sizeScope(){const r=scope.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);scope.width=Math.max(1,r.width*dpr);scope.height=Math.max(1,r.height*dpr);}
+window.addEventListener('resize',sizeScope);
+let lastDet=0,lastScan=0,lastList=0;
+function frame(t){
+  const now=Date.now();
+  if(S.power&&now-lastDet>=50){lastDet=now;
+    const db=main?detect(main,now):null;if(pri)detect(pri,now);
+    if(pri&&main&&main.duck)main.duck.gain.setTargetAtTime(pri.active?.3:1,ctx.currentTime,.08);
+    const n=db==null?0:Math.max(0,Math.min(6,Math.round((db+60)/8)));
+    bars.querySelectorAll('i').forEach((b,i)=>b.classList.toggle('lit',i<n));
+    $('iAF').classList.toggle('lit',!!(main&&main.an));
+    const led=$('led');const rx=(main&&main.active)||(pri&&pri.active);
+    led.className='led'+(rx?' rx':(main&&main.st.status==='buf'?' buf':''));
+  }
+  if(S.power&&now-lastScan>=1000){lastScan=now;scanTick(now);tickClock();}
+  if(now-lastList>=30000){lastList=now;renderList();}
+  drawScope();
+  requestAnimationFrame(frame);
+}
+function drawScope(){
+  const w=scope.width,h=scope.height;sctx.clearRect(0,0,w,h);
+  const ink='rgba(42,18,0,';
+  sctx.fillStyle=ink+'.10)';for(let x=0;x<w;x+=w/24)for(let y=h/4;y<h;y+=h/4)sctx.fillRect(x,y,1.2,1.2);
+  sctx.lineWidth=Math.max(1.4,h/34);sctx.strokeStyle=ink+'.95)';sctx.beginPath();
+  if(S.power&&main&&main.an){const b=main.buf,n=b.length,step=n/w;for(let x=0;x<w;x++){const v=b[Math.floor(x*step)]||0;const y=h/2-v*h*1.6;x?sctx.lineTo(x,y):sctx.moveTo(x,y);}}
+  else{sctx.moveTo(0,h/2);sctx.lineTo(w,h/2);}
+  sctx.stroke();
+  if(S.power&&main&&!main.an&&main.st.cors==='no'){sctx.fillStyle=ink+'.8)';sctx.font=`${Math.round(h/4.2)}px "Share Tech Mono",monospace`;sctx.fillText('AF N/A · PROVIDER BLOCKS ANALYSIS',6,h/2-6);}
+}
+
+/* ---------- controls ---------- */
+$('kPwr').onclick=power;
+$('kScan').onclick=()=>setScan(!S.scan);
+$('kDW').onclick=toggleDW;
+$('kPrev').onclick=()=>step(-1);$('kNext').onclick=()=>step(1);
+$('kFlt').onclick=()=>{S.filter=!S.filter;save();$('kFlt').setAttribute('aria-pressed',S.filter);$('iFlt').classList.toggle('lit',S.filter);for(const c of [main,pri])if(c)c.route();if(S.power)setMsg(S.filter?'NARROWBAND 300–3000 HZ':'WIDEBAND');};
+$('kTail').onclick=()=>{S.tail=!S.tail;save();$('kTail').setAttribute('aria-pressed',S.tail);if(S.power)setMsg(S.tail?'SQUELCH TAIL ON':'SQUELCH TAIL OFF');};
+$('kMute').onclick=()=>{S.muted=!S.muted;save();applyVolume();};
+document.querySelectorAll('#bandkeys .key').forEach(k=>k.onclick=()=>setBand(k.dataset.band));
+function setVol(v){S.vol=Math.max(0,Math.min(1,v));save();applyVolume();}
+const vk=$('volKnob');
+vk.addEventListener('wheel',e=>{e.preventDefault();setVol(S.vol-e.deltaY*.0009);},{passive:false});
+let drag=null;vk.addEventListener('pointerdown',e=>{drag={y:e.clientY,v:S.vol};vk.setPointerCapture(e.pointerId);});
+vk.addEventListener('pointermove',e=>{if(drag)setVol(drag.v+(drag.y-e.clientY)*.005);});
+vk.addEventListener('pointerup',()=>drag=null);vk.addEventListener('pointercancel',()=>drag=null);
+vk.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowRight'){setVol(S.vol+.05);e.preventDefault();e.stopPropagation();}if(e.key==='ArrowDown'||e.key==='ArrowLeft'){setVol(S.vol-.05);e.preventDefault();e.stopPropagation();}});
+const ck=$('chKnob');let acc=0;
+ck.addEventListener('wheel',e=>{e.preventDefault();acc+=e.deltaY;if(Math.abs(acc)>60){step(acc>0?1:-1);acc=0;}},{passive:false});
+let cdrag=null;ck.addEventListener('pointerdown',e=>{cdrag={y:e.clientY};ck.setPointerCapture(e.pointerId);});
+ck.addEventListener('pointermove',e=>{if(!cdrag)return;const dy=cdrag.y-e.clientY;if(Math.abs(dy)>28){step(dy>0?1:-1);cdrag.y=e.clientY;}});
+ck.addEventListener('pointerup',()=>cdrag=null);ck.addEventListener('pointercancel',()=>cdrag=null);
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea')||e.metaKey||e.ctrlKey||e.altKey)return;
+  const k=e.key.toLowerCase();
+  if(k==='arrowleft'){step(-1);e.preventDefault();}else if(k==='arrowright'){step(1);e.preventDefault();}
+  else if(k==='s')setScan(!S.scan);else if(k==='d')toggleDW();else if(k==='f')$('kFlt').click();else if(k==='t')$('kTail').click();
+  else if(k==='m')$('kMute').click();else if(k==='p')power();
+  else if(k==='+'||k==='=')setVol(S.vol+.05);else if(k==='-'||k==='_')setVol(S.vol-.05);
+  else if(/^[1-7]$/.test(k))setBand(BANDS[+k-1]);
+});
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===t.dataset.pane));});
+
+/* ---------- decoder ---------- */
+const AIRLINES=[["American","American Airlines","AAL"],["Delta","Delta Air Lines","DAL"],["United","United Airlines","UAL"],["Southwest","Southwest Airlines","SWA"],["JetBlue","JetBlue","JBU"],["Alaska","Alaska Airlines","ASA"],["Spirit Wings","Spirit Airlines","NKS"],["Frontier Flight","Frontier Airlines","FFT"],["Hawaiian","Hawaiian Airlines","HAL"],["Allegiant","Allegiant Air","AAY"],["Sun Country","Sun Country Airlines","SCX"],["SkyWest","SkyWest Airlines","SKW"],["Brickyard","Republic Airways","RPA"],["Envoy","Envoy Air","ENY"],["Endeavor","Endeavor Air","EDV"],["Blue Streak","PSA Airlines","JIA"],["Piedmont","Piedmont Airlines","PDT"],["FedEx","FedEx Express","FDX"],["UPS","UPS Airlines","UPS"],["Giant","Atlas Air","GTI"],["Air Canada","Air Canada","ACA"],["Jazz","Jazz Aviation","JZA"],["WestJet","WestJet","WJA"],["Porter","Porter Airlines","POE"],["Aeromexico","Aeroméxico","AMX"],["Copa","Copa Airlines","CMP"],["Avianca","Avianca","AVA"],["Speedbird","British Airways","BAW"],["Virgin","Virgin Atlantic","VIR"],["Shamrock","Aer Lingus","EIN"],["Ryanair","Ryanair","RYR"],["Easy","easyJet","EZY"],["Airfrans","Air France","AFR"],["KLM","KLM","KLM"],["City","KLM Cityhopper","KLC"],["Transavia","Transavia","TRA"],["Lufthansa","Lufthansa","DLH"],["Swiss","Swiss","SWR"],["Austrian","Austrian Airlines","AUA"],["Iberia","Iberia","IBE"],["Europa","Air Europa","AEA"],["Vueling","Vueling","VLG"],["Air Portugal","TAP Air Portugal","TAP"],["Itarrow","ITA Airways","ITY"],["Scandinavian","SAS","SAS"],["Nor Shuttle","Norwegian","NAX"],["Finnair","Finnair","FIN"],["Pollot","LOT Polish Airlines","LOT"],["Wizz Air","Wizz Air","WZZ"],["Turkish","Turkish Airlines","THY"],["Emirates","Emirates","UAE"],["Qatari","Qatar Airways","QTR"],["Etihad","Etihad Airways","ETD"],["Saudia","Saudia","SVA"],["El Al","El Al","ELY"],["Egyptair","EgyptAir","MSR"],["Ethiopian","Ethiopian Airlines","ETH"],["Kenya","Kenya Airways","KQA"],["Springbok","South African Airways","SAA"],["Air India","Air India","AIC"],["IFly","IndiGo","IGO"],["Singapore","Singapore Airlines","SIA"],["Malaysian","Malaysia Airlines","MAS"],["Thai","Thai Airways","THA"],["Cathay","Cathay Pacific","CPA"],["Philippine","Philippine Airlines","PAL"],["Cebu","Cebu Pacific","CEB"],["Dynasty","China Airlines","CAL"],["Eva","EVA Air","EVA"],["Air China","Air China","CCA"],["China Eastern","China Eastern","CES"],["China Southern","China Southern","CSN"],["Japan Air","Japan Airlines","JAL"],["All Nippon","All Nippon Airways","ANA"],["Koreanair","Korean Air","KAL"],["Asiana","Asiana Airlines","AAR"],["Qantas","Qantas","QFA"],["Velocity","Virgin Australia","VOZ"],["Jetstar","Jetstar","JST"],["New Zealand","Air New Zealand","ANZ"]];
+const TERMS=[["Heavy","Suffix for wide-body aircraft, warning of strong wake turbulence"],["Super","Suffix for the Airbus A380"],["Lifeguard / Medevac","Medical flight with priority handling"],["Squawk","Set this four-digit code on the transponder"],["Squawk 7700 / 7600 / 7500","Emergency / lost radio / unlawful interference"],["Line up and wait","Enter the runway and hold for take-off clearance"],["Hold short","Stop before the named runway or taxiway"],["Cleared to land","Runway is yours for landing"],["Go around","Abandon the approach and climb away"],["Wilco","Will comply"],["Roger","Received, nothing more implied"],["Say again","Repeat your last transmission"],["Souls on board","Total people aboard, asked in an emergency"],["Mayday","Grave and imminent danger, said three times"],["Pan-pan","Urgent, but not immediately life-threatening"],["Sécurité","Marine safety message, often weather or navigation hazards"],["Channel 16","Marine distress, safety and calling channel (156.800 MHz)"],["Channel 22A","US Coast Guard working and broadcast channel"],["Tracks","North Atlantic Tracks, the daily oceanic routes set by Gander and Shanwick"],["Selcal","Selective calling: the ground rings one aircraft on HF"],["10-4","Message received (US police and fire)"],["Working fire","Fire confirmed, more resources likely"],["All hands","Every assigned unit is committed (FDNY)"],["Box","Fire alarm box or response area number"],["Clear block / clear signal","Train dispatcher authority to proceed through a section"],["Defect detector","Automated trackside voice reporting a train's axle count and faults"]];
+function renderDecoder(q=''){q=q.trim().toLowerCase();const m=a=>a.join(' ').toLowerCase().includes(q);
+  $('decAir').innerHTML=AIRLINES.filter(m).map(a=>`<tr><td>${a[0].toUpperCase()}</td><td class="d">${a[1]}</td><td>${a[2]}</td></tr>`).join('')||'<tr><td class="d" colspan="3">No match</td></tr>';
+  $('decTerms').innerHTML=TERMS.filter(m).map(a=>`<tr><td style="white-space:nowrap">${a[0]}</td><td class="d">${a[1]}</td></tr>`).join('')||'<tr><td class="d">No match</td></tr>';}
+$('decQ').addEventListener('input',e=>renderDecoder(e.target.value));
+
+/* ---------- optional status file written by the GitHub Action ---------- */
+fetch('open-channel-status.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+  if(!j||!j.stations)return;
+  for(const[id,v]of Object.entries(j.stations)){const s=byId[id];if(!s||s.status!=='unk')continue;if(v.ok)s.status='live';else if(v.code===404||v.code===410)s.status='off';}
+  if(j.checked)$('statusStamp').textContent='checked '+new Date(j.checked).toISOString().slice(0,16).replace('T',' ')+' UTC';
+  renderList();
+}).catch(()=>{});
+
+/* read-only state for debugging from the console */
+window.openChannel={state:()=>({power:S.power,scan:S.scan,band:S.band,main:main&&{id:main.st.id,af:!!main.an,cors:main.st.cors,status:main.st.status,ready:main.el&&main.el.readyState,paused:main.el&&main.el.paused,floor:+main.floor.toFixed(1),active:main.active,lastActive:main.lastActive,err:main.el&&main.el.error&&main.el.error.code},pri:pri&&{id:pri.st.id,status:pri.st.status},log:S.log.length})};
+/* ---------- boot ---------- */
+showFreq('888.888');showCh(88);
+$('kScan').setAttribute('aria-pressed',S.scan);$('iScan').classList.toggle('lit',S.scan);
+$('kFlt').setAttribute('aria-pressed',S.filter);$('iFlt').classList.toggle('lit',S.filter);
+$('kTail').setAttribute('aria-pressed',S.tail);
+setBand(BANDS.includes(S.band)?S.band:'ALL');
+applyVolume();renderList();renderLog();renderDecoder();
+requestAnimationFrame(()=>{sizeScope();requestAnimationFrame(frame);});
+})();
+</script>
+</body>
+</html>
